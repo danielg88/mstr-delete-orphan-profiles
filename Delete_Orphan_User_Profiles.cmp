@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<PROCEDURE_DEFINITION>
+<DESCRIPTION/>
+<CODE>try {&#13;
+&#13;
+ArrayList aUsuarios = new ArrayList ();&#13;
+int countUsuarios = 0;&#13;
+&#13;
+///////////////   TEXT ENTRY /////////////////////&#13;
+try {&#13;
+&#13;
+	String listadode ="/dev/usuarios_profile_borrar.txt";&#13;
+	String listadoei ="/aux/usuarios_profile_borrar.txt";&#13;
+	String listadoau ="/pre/usuarios_profile_borrar.txt";&#13;
+	String listadopr = "/pro/usuarios_profile_borrar.txt";&#13;
+	String listado ="";  &#13;
+	String linea="";&#13;
+&#13;
+	File fde = new File(listadode);&#13;
+	File fei = new File(listadoei);&#13;
+	File fau = new File(listadoau);&#13;
+	File fpr = new File(listadopr);&#13;
+	if (fde.exists()){ &#13;
+		listado = listadode; }&#13;
+	if (fei.exists()){&#13;
+		listado = listadoei; }&#13;
+	if (fau.exists()){&#13;
+		listado = listadoau; }&#13;
+	if (fpr.exists()){&#13;
+		listado = listadopr; } &#13;
+&#13;
+	FileReader fr = new FileReader (listado);&#13;
+	BufferedReader texto= new BufferedReader (fr);&#13;
+&#13;
+	while ((linea= texto.readLine())!=null) {&#13;
+		//printOut (linea);&#13;
+			for (String linea2: linea.split(";")) // Convierto la línea en un ArrayList para fácil acceso luego&#13;
+			{&#13;
+			aUsuarios.add(linea2.toLowerCase());&#13;
+			countUsuarios=++countUsuarios;&#13;
+			}&#13;
+	}&#13;
+&#13;
+	texto.close();&#13;
+	printOut	(aUsuarios);&#13;
+} catch (FileNotFoundException ex) {&#13;
+	printOut("No se puede abrir el fichero con la lista de usuarios, comprobar la ruta y que el fichero existe.");}&#13;
+catch (IOException ex) {&#13;
+	ex.printStackTrace(); }&#13;
+&#13;
+///////////////   END TEXT ENTRY /////////////////////&#13;
+&#13;
+&#13;
+///////////////   DB ENTRY /////////////////////&#13;
+if (aUsuarios.isEmpty()) {&#13;
+	String sSQLQueryORA = "";&#13;
+	String sMySQLquery = "";&#13;
+	String sSQLQueryORADEFAULT= "select a12.EM_USER_ABBREV  EM_USER_ABBREV, max(a11.IS_CONNECT_TS)  WJXBFS1 from	EBIP.IS_SESSION	a11 join EBIP.EM_USER_VIEW	a12 on (a11.EM_USER_ID = a12.EM_USER_ID) where a12.EM_EXISTS_ID = 0 having max(a11.IS_CONNECT_TS) &lt;= (sysdate-365) group by a12.EM_USER_ABBREV";&#13;
+	try{&#13;
+	String queryde ="/dev/query_profile_borrar.txt";&#13;
+	String queryei ="/aux/query_profile_borrar.txt";&#13;
+	String queryau ="/pre/query_profile_borrar.txt";&#13;
+	String querypr ="/pro/query_profile_borrar.txt";&#13;
+&#13;
+	String query ="";  &#13;
+	String linea="";&#13;
+&#13;
+	File fqde = new File(queryde);&#13;
+	File fqei = new File(queryei);&#13;
+	File fqau = new File(queryau);&#13;
+	File fqpr = new File(querypr);&#13;
+&#13;
+	if (fqde.exists()){ &#13;
+		query = queryde; }&#13;
+	if (fqei.exists()){&#13;
+		query = queryei; }&#13;
+	if (fqau.exists()){&#13;
+		query = queryau; }&#13;
+	if (fqpr.exists()){&#13;
+		query = querypr; } &#13;
+&#13;
+	FileReader fr = new FileReader (query);&#13;
+	BufferedReader texto= new BufferedReader (fr);&#13;
+&#13;
+	while ((linea= texto.readLine())!=null) {&#13;
+	sSQLQueryORA=linea;&#13;
+	}&#13;
+	texto.close();&#13;
+&#13;
+	} catch (FileNotFoundException ex) {&#13;
+		printOut("No se puede abrir el fichero con la query, comprobar la ruta y que el fichero existe.");}&#13;
+	catch (IOException ex) {&#13;
+		ex.printStackTrace(); }&#13;
+	sMySQLquery = sSQLQueryORA; //No repito la lectura de los ficheros de query&#13;
+	if (sSQLQueryORA.isEmpty()){&#13;
+		sSQLQueryORA = sSQLQueryORADEFAULT;&#13;
+		printOut("Se usará la query por defecto");&#13;
+	}&#13;
+	printOut("Proceso BBDD: La lista de usuarios posibles a borrar se obtendrá de BBDD");&#13;
+&#13;
+	try { &#13;
+	///////////////   ORACLE DB ENTRY /////////////////////&#13;
+		String sDriver = "oracle.jdbc.driver.OracleDriver";&#13;
+		Class.forName(sDriver).newInstance();&#13;
+		String jdbcORAURL = "jdbc:oracle:thin:" + sOracleUser + "/" + sOraclePwd + "@" + sOracleServer + ":" + sOraclePort + ":" + sOracleSid;&#13;
+		printOut("Connecting to Oracle " + jdbcORAURL);&#13;
+		java.sql.Connection connORA = java.sql.DriverManager.getConnection(jdbcORAURL); &#13;
+		java.sql.Statement stmtORA = connORA.createStatement();&#13;
+&#13;
+		printOut("Query: " +  sSQLQueryORA);&#13;
+		java.sql.ResultSet ORAQuery = null;&#13;
+		try {&#13;
+			ORAQuery = stmtORA.executeQuery(sSQLQueryORA);&#13;
+		}&#13;
+		catch (java.sql.SQLException e) {&#13;
+			printOut("SQL EXCEPTION: Error en la query de fichero, se intentará ejecutar la query por defecto");&#13;
+			sSQLQueryORA = sSQLQueryORADEFAULT;&#13;
+			ORAQuery = stmtORA.executeQuery(sSQLQueryORA);	&#13;
+        		    }&#13;
+	&#13;
+&#13;
+		while (ORAQuery.next()) {&#13;
+			aUsuarios.add(ORAQuery.getString(1).trim().toLowerCase());&#13;
+			countUsuarios=++countUsuarios;&#13;
+		}&#13;
+		ORAQuery.close();&#13;
+		stmtORA.close();&#13;
+		connORA.close();&#13;
+&#13;
+		printOut ("Usuarios en la query: "+ countUsuarios);&#13;
+	///////////////   END ORACLE DB ENTRY /////////////////////&#13;
+	} catch (java.sql.SQLException eSQL) { &#13;
+	///////////// MySQL DB ENTRY /////////////////////&#13;
+		printOut ("No se ha podido conectar a Oracle, se intentará conexión MySQL");&#13;
+&#13;
+		String sMySQLqueryDEFAULT = "select max(a12.account_login)  account_login from access_transactions a11 join lu_account a12 on (a11.account_id = a12.account_id) where a11.action_type_id in (100, 102, 104) group by a11.account_id having max(a11.tran_timestamp) &lt;=  date_add(sysdate(), INTERVAL -365 DAY)";&#13;
+&#13;
+		if (sMySQLquery.isEmpty()){&#13;
+			sMySQLquery = sMySQLqueryDEFAULT;&#13;
+			printOut("Se usará la query por defecto");&#13;
+		}&#13;
+		printOut("Proceso BBDD MySQL (Platform Analytics): La lista de usuarios posibles a borrar se obtendrá de BBDD");&#13;
+&#13;
+		String sDriver = "com.mysql.jdbc.Driver";&#13;
+		Class.forName(sDriver);&#13;
+		String sJDBCurl = "jdbc:mysql://" + sOracleServer + ":" + sOraclePort + "/" + sOracleSid + "?useSSL=false"; //SE USA EL SID COMO BBDD A CONECTAR&#13;
+		printOut("Connecting to MySQL " + sJDBCurl);&#13;
+		java.sql.Connection connMySQL = null;&#13;
+&#13;
+		connMySQL = java.sql.DriverManager.getConnection(sJDBCurl, sOracleUser, sOraclePwd);&#13;
+		java.sql.Statement stmtMySQL =connMySQL.createStatement();&#13;
+		printOut("Query: " +  sMySQLquery);&#13;
+		java.sql.ResultSet MySQLQuery = null;&#13;
+		try {&#13;
+			MySQLQuery = stmtMySQL.executeQuery(sMySQLquery);&#13;
+		}&#13;
+		catch (java.sql.SQLException e) {&#13;
+			printOut("SQL EXCEPTION: Error en la query de fichero, se intentará ejecutar la query por defecto");&#13;
+			sMySQLquery = sMySQLqueryDEFAULT;&#13;
+			MySQLQuery = stmtMySQL.executeQuery(sMySQLquery);&#13;
+        		    }&#13;
+&#13;
+		while (MySQLQuery.next()) {&#13;
+			aUsuarios.add(MySQLQuery.getString(1).trim().toLowerCase());&#13;
+			countUsuarios=++countUsuarios;&#13;
+		}&#13;
+		MySQLQuery.close();&#13;
+		stmtMySQL.close();&#13;
+		connMySQL.close();&#13;
+&#13;
+		printOut ("Usuarios en la query: "+ countUsuarios);&#13;
+&#13;
+	}&#13;
+	////////////// END MySQL DB ENTRY /////////////////////&#13;
+&#13;
+} else {&#13;
+	printOut("Proceso Fichero: La lista de usuarios posibles a borrar se obtendrá de Fichero");&#13;
+	printOut ("Usuarios en el fichero: "+ countUsuarios);	&#13;
+}&#13;
+&#13;
+&#13;
+////////////// END DB ENTRY /////////////////////&#13;
+&#13;
+&#13;
+ResultSet allProjects = executeCapture("LIST ALL PROJECTS;");&#13;
+allProjects.moveFirst();&#13;
+String project ="";&#13;
+String sQuery="";&#13;
+for (int projects = 0; projects&lt;allProjects.getRowCount(); projects++) {&#13;
+	Object oPrueba = (Object) allProjects.getFieldValue(NAME);&#13;
+	project = "" + oPrueba;&#13;
+	if ( (int) allProjects.getFieldValue(PROJECT_STATUS_2) == 0) {&#13;
+&#13;
+	/* gather all the profiles that are linked */&#13;
+		Set&lt;String&gt; linkedProfiles = new HashSet&lt;String&gt;();&#13;
+		printOut("Checking user in project " + project );&#13;
+		ResultSet allProfiles = executeCapture("LIST ALL PROFILES FOR USERS IN GROUP 'EVERYONE' FOR PROJECT '" + project + "';");&#13;
+&#13;
+		allProfiles.moveFirst();&#13;
+		allProfiles = (ResultSet)allProfiles.getFieldValue(MEMBER_RESULTSET);&#13;
+		allProfiles.moveFirst();&#13;
+		for (int i = 0; i &lt; allProfiles.getRowCount(); i++) {&#13;
+			ResultSet userProfile = (ResultSet)allProfiles.getFieldValue(USER_PROFILES_RESULTSET);&#13;
+			String profile;&#13;
+			userProfile.moveFirst();&#13;
+			profile = userProfile.getFieldValueString(PROFILE).toLowerCase();&#13;
+			//save profiles into the list&#13;
+			if (linkedProfiles.add(profile) &amp;&amp; !profile.equalsIgnoreCase("no profiles")) {  //Un usuario puede no tener creada carpetas personales en un proyecto&#13;
+			//	printOut("Found valid profile folder:" + profile);&#13;
+			}&#13;
+			allProfiles.moveNext();&#13;
+		}&#13;
+&#13;
+/* gather all the folders under the profiles folder */&#13;
+		ResultSet potentialProfileFolders = executeCapture("LIST ALL FOLDERS IN '\\PROFILES' FOR PROJECT '" + project +"';");&#13;
+		potentialProfileFolders.moveFirst();&#13;
+		for (int i = 0; i &lt; potentialProfileFolders.getRowCount(); i++) {&#13;
+			String potentialFolder = potentialProfileFolders.getFieldValueString(PATH);&#13;
+			String potentialFolderName = potentialProfileFolders.getFieldValueString(NAME);&#13;
+&#13;
+			//check if the folder is in the profile list, if no, then delete it.&#13;
+			potentialFolder += potentialFolderName;&#13;
+	&#13;
+			int limitein = potentialFolder.indexOf("(");&#13;
+			int limitesup = potentialFolder.indexOf(")");&#13;
+			String user ="";&#13;
+			if (limitein != -1 &amp;&amp; limitesup !=-1) {user= potentialFolder.substring(limitein+1,limitesup).toLowerCase();} else {user=potentialFolder;}&#13;
+&#13;
+			if (!linkedProfiles.contains(potentialFolder.toLowerCase())) {&#13;
+			if (aUsuarios.contains(user)){ //User in list from database&#13;
+				//remove the content from the top folder (initial folder)&#13;
+				sQuery = "REMOVE FOLDER CONTENT CASCADE \"" + potentialFolderName + "\" IN \"" + "\\PROFILES\\" + "\" FROM PROJECT \"" + project + "\";";&#13;
+				printOut(sQuery);&#13;
+				execute(sQuery); &#13;
+				sQuery = "DELETE FOLDER '" + potentialFolderName + "' IN '\\PROFILES' FROM PROJECT '" + project + "';";&#13;
+				printOut(sQuery);&#13;
+				execute(sQuery); &#13;
+				printOut("Deleting the PARENT folder, not linked to any user account: " + potentialFolder);&#13;
+			} else {&#13;
+			printOut( "Not in METADATA but also not in list to delete: " + user);&#13;
+			}&#13;
+			}	&#13;
+	&#13;
+			potentialProfileFolders.moveNext();&#13;
+		}&#13;
+	printOut("Finishing project: " + project );&#13;
+	} else { printOut("Project NOT LOADED "+project); }//Close if that checks if project is Loaded&#13;
+&#13;
+allProjects.moveNext();&#13;
+} //for allProjects&#13;
+&#13;
+} catch (Exception e) {&#13;
+    e.printStackTrace();&#13;
+    printErr(e.toString());&#13;
+}</CODE>
+<SAMPLE>EXECUTE PROCEDURE Delete_Orphan_User_Profiles ();</SAMPLE>
+<VERSION/>
+<TYPE>CUSTOM</TYPE>
+<INPUT_PARAMS>
+<INPUT INPUT_TYPE="STRING">sOracleUser</INPUT>
+<INPUT INPUT_TYPE="STRING">sOraclePwd</INPUT>
+<INPUT INPUT_TYPE="STRING">sOracleServer</INPUT>
+<INPUT INPUT_TYPE="STRING">sOraclePort</INPUT>
+<INPUT INPUT_TYPE="STRING">sOracleSid</INPUT>
+</INPUT_PARAMS>
+<CLASSPATH>
+<CLASSPATH_ITEM>./lib/ojdbc14.jar</CLASSPATH_ITEM>
+<CLASSPATH_ITEM>./lib/orai18n.jar</CLASSPATH_ITEM>
+<CLASSPATH_ITEM>C:\Program Files (x86)\MicroStrategy\Command Manager\mysql-connector-java-8.0.16.jar</CLASSPATH_ITEM>
+</CLASSPATH>
+<TEST_INPUT>
+<TEST_INPUT_PARAM>XXXXX</TEST_INPUT_PARAM>
+<TEST_INPUT_PARAM>XXXX</TEST_INPUT_PARAM>
+<TEST_INPUT_PARAM>XXXXX</TEST_INPUT_PARAM>
+<TEST_INPUT_PARAM>XXXX</TEST_INPUT_PARAM>
+<TEST_INPUT_PARAM>XXXX</TEST_INPUT_PARAM>
+</TEST_INPUT>
+<TEST_CONNECTION_INFO>
+<TEST_PSN_NAME>Desarrollo - Operador</TEST_PSN_NAME>
+<TEST_USERNAME>XXXXXX</TEST_USERNAME>
+<TEST_PASSWORD>000000008e94ffb2d8abd6ffda2dd3758832b16cb8541172953351f392f107c4c0afbf80fd7497b71c08ca59de42c83bb4fc4c77d5b77ded</TEST_PASSWORD>
+</TEST_CONNECTION_INFO>
+</PROCEDURE_DEFINITION>
